@@ -1,0 +1,16 @@
+{
+  "steps": [
+    {
+      "command": "move_to",
+      "object": "water bottle"
+    },
+    {
+      "command": "pick_up",
+      "object": "water bottle"
+    },
+    {
+      "command": "place",
+      "object": "water bottle"
+    }
+  ]
+}

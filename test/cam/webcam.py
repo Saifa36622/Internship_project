@@ -26,6 +26,9 @@ try:
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
 
+        color_image = cv2.rotate(color_image, cv2.ROTATE_180)
+        depth_image = cv2.rotate(depth_image, cv2.ROTATE_180)
+        
         # Show images
         cv2.imshow("Color Image", color_image)
         cv2.imshow("Depth Image", depth_image)

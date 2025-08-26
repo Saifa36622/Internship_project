@@ -94,7 +94,7 @@ elif MY_DXL == 'XL320':
 
 # DYNAMIXEL Protocol Version (1.0 / 2.0)
 # https://emanual.robotis.com/docs/en/dxl/protocol2/
-PROTOCOL_VERSION            = 2.0
+PROTOCOL_VERSION            = 1.0
 
 # Factory default ID of all DYNAMIXEL is 1
 DXL_ID                      = 0
@@ -149,10 +149,10 @@ elif dxl_error != 0:
 else:
     print("Dynamixel has been successfully connected")
 
-# while 1:
-#     print("Press any key to continue! (or press ESC to quit!)")
-    # if getch() == chr(0x1b):
-    #     break
+while 1:
+    print("Press any key to continue! (or press ESC to quit!)")
+    if getch() == chr(0x1b):
+        break
 
     # Write goal position
 
@@ -172,7 +172,7 @@ else:
 
         if not abs(dxl_goal_position[index] - dxl_present_position) > DXL_MOVING_STATUS_THRESHOLD:
             break
-
+ 
     # Change goal position
 
 

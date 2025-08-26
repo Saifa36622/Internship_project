@@ -39,11 +39,13 @@ class servo(Node):
 
             # Control table address
             if self.MY_DXL == 'X_SERIES' or self.MY_DXL == 'MX_SERIES':
+                ADDR_OPERATING_MODE         = 11        # Current Control Mode
                 ADDR_TORQUE_ENABLE          = 64
-                self.ADDR_GOAL_POSITION          = 116
-                self.ADDR_PRESENT_POSITION       = 132
-                DXL_MINIMUM_POSITION_VALUE  = 0         # Refer to the Minimum Position Limit of product eManual
-                DXL_MAXIMUM_POSITION_VALUE  = 4095      # Refer to the Maximum Position Limit of product eManual
+                self.ADDR_GOAL_CURRENT      = 102       # Current goal
+                self.ADDR_PRESENT_CURRENT   = 126       # Present current
+                CURRENT_LIMIT              = 1193      # Max current value (2.69A)
+                DXL_MINIMUM_CURRENT_VALUE  = -1193     # Min current value (-2.69A)
+                DXL_MAXIMUM_CURRENT_VALUE  = 1193      # Max current value (2.69A)
                 BAUDRATE                    = 57600
             elif self.MY_DXL == 'PRO_SERIES':
                 ADDR_TORQUE_ENABLE          = 562       # Control table address is different in DYNAMIXEL model
@@ -83,7 +85,7 @@ class servo(Node):
             self.DXL_MOVING_STATUS_THRESHOLD = 30    # Dynamixel moving status threshold
 
             index = 0
-            self.dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]         # Goal position
+            self.dxl_goal_current = [0, 500, -500]  # Goal current values: stop, CW, CCW
 
 
             # Initialize PortHandler instance
@@ -115,6 +117,13 @@ class servo(Node):
                 getch()
                 quit()
 
+            # Set to Current Control Mode
+            dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(self.portHandler, self.DXL_ID, ADDR_OPERATING_MODE, 0)
+            if dxl_comm_result != COMM_SUCCESS:
+                print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+            elif dxl_error != 0:
+                print("%s" % self.packetHandler.getRxPacketError(dxl_error))
+            
             # Enable Dynamixel Torque
             dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(self.portHandler, self.DXL_ID, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
             if dxl_comm_result != COMM_SUCCESS:
@@ -122,77 +131,55 @@ class servo(Node):
             elif dxl_error != 0:
                 print("%s" % self.packetHandler.getRxPacketError(dxl_error))
             else:
-                print("Dynamixel has been successfully connected")
+                print("Dynamixel has been successfully connected in Current Control Mode")
 
         setup()
         self.create_timer(0.1, self.timer_callback)
         self.create_subscription(Int32, "/servo_cmd", self.servo_callback, 10)
-        self.trigger = 0
-        self.index = 0
-        if self.index != 1 :
-            if (self.MY_DXL == 'XL320'): # XL320 uses 2 byte Position Data, Check the size of data in your DYNAMIXEL's control table
-                dxl_comm_result, dxl_error = self.packetHandler.write2ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_GOAL_POSITION, self.dxl_goal_position[self.index])
-            else:
-                dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_GOAL_POSITION, self.dxl_goal_position[self.index])
-            if dxl_comm_result != COMM_SUCCESS:
-                print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-            elif dxl_error != 0:
-                print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-            while self.index != 1 :
-                # Read present position
-                if (self.MY_DXL == 'XL320'): # XL320 uses 2 byte Position Data, Check the size of data in your DYNAMIXEL's control table
-                    dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read2ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_PRESENT_POSITION)
-                else:
-                    dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read4ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_PRESENT_POSITION)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-
-                print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (self.DXL_ID, self.dxl_goal_position[self.index], dxl_present_position))
-
-                if not abs(self.dxl_goal_position[self.index] - dxl_present_position) > self.DXL_MOVING_STATUS_THRESHOLD:
-                    if self.index == 0:
-                        self.index = 1
-                    else:
-                        self.index = 0
-                    self.trigger = 0
-                    break
     def timer_callback(self):
-        while self.trigger == 1:
-            # Read present position
-            if (self.MY_DXL == 'XL320'): # XL320 uses 2 byte Position Data, Check the size of data in your DYNAMIXEL's control table
-                dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read2ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_PRESENT_POSITION)
-            else:
-                dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read4ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_PRESENT_POSITION)
-            if dxl_comm_result != COMM_SUCCESS:
-                print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-            elif dxl_error != 0:
-                print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-
-            print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (self.DXL_ID, self.dxl_goal_position[self.index], dxl_present_position))
-
-            # fix here
-            if not abs(self.dxl_goal_position[self.index] - dxl_present_position) > self.DXL_MOVING_STATUS_THRESHOLD:
-                if self.index == 0:
-                    self.index = 1
-                else:
-                    self.index = 0
-                self.trigger = 0
-                break
-
-    def servo_callback(self,msg:Int32):
-        self.trigger = 1
-        if (self.MY_DXL == 'XL320'): # XL320 uses 2 byte Position Data, Check the size of data in your DYNAMIXEL's control table
-            dxl_comm_result, dxl_error = self.packetHandler.write2ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_GOAL_POSITION, self.dxl_goal_position[self.index])
-        else:
-            dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, self.DXL_ID, self.ADDR_GOAL_POSITION, self.dxl_goal_position[self.index])
+        # Read present current
+        dxl_present_current, dxl_comm_result, dxl_error = self.packetHandler.read2ByteTxRx(
+            self.portHandler, 
+            self.DXL_ID, 
+            self.ADDR_PRESENT_CURRENT
+        )
+        
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
         elif dxl_error != 0:
             print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-                
+        else:
+            print("[ID:%03d] Present Current:%03d" % (self.DXL_ID, dxl_present_current))
+
+    def servo_callback(self, msg: Int32):
+        # msg.data: 0 = stop, 1 = CW, 2 = CCW
+        if msg.data not in [0, 1, 2]:
+            print("Invalid command. Use 0 for stop, 1 for CW, 2 for CCW")
+            return
+            
+        current_value = self.dxl_goal_current[msg.data]
+        dxl_comm_result, dxl_error = self.packetHandler.write2ByteTxRx(
+            self.portHandler, 
+            self.DXL_ID, 
+            self.ADDR_GOAL_CURRENT, 
+            current_value
+        )
         
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
+        else:
+            direction = "STOP" if msg.data == 0 else "CW" if msg.data == 1 else "CCW"
+            print(f"Setting current to {current_value} ({direction})")
+            # Read and print present current after setting
+            dxl_present_current, dxl_comm_result, dxl_error = self.packetHandler.read2ByteTxRx(
+                self.portHandler, 
+                self.DXL_ID, 
+                self.ADDR_PRESENT_CURRENT
+            )
+            if dxl_comm_result == COMM_SUCCESS and dxl_error == 0:
+                print(f"[ID:{self.DXL_ID:03d}] Present Current: {dxl_present_current}")
 
 def main(args=None):
     rclpy.init(args=args)
