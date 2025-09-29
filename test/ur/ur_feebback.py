@@ -1,3 +1,32 @@
+from rtde_receive import RTDEReceiveInterface
+import math
+import time
+rtde_receive = RTDEReceiveInterface("192.168.12.60")
+
+# Get current joint positions (in radians)
+# while True :
+#     joint_positions = rtde_receive.getActualQ()
+#     # joint_positions_new = [0.0] * 6
+#     # for i in range(len(joint_positions)):
+#     #     joint_positions_new[i] = math.degrees(joint_positions[i])
+#     print("Joint positions:", joint_positions)
+#     # print("Joint positions (degrees):", joint_positions_new)
+#     # Get current end-effector pose (x, y, z, Rx, Ry, Rz)
+#     ee_pose = rtde_receive.getActualTCPPose()
+#     print("End-effector pose:", ee_pose)
+#     time.sleep(0.5)
+
+joint_positions = rtde_receive.getActualQ()
+# joint_positions_new = [0.0] * 6
+# for i in range(len(joint_positions)):
+#     joint_positions_new[i] = math.degrees(joint_positions[i])
+print("Joint positions:", joint_positions)
+# print("Joint positions (degrees):", joint_positions_new)
+# Get current end-effector pose (x, y, z, Rx, Ry, Rz)
+ee_pose = rtde_receive.getActualTCPPose()
+print("End-effector pose:", ee_pose)
+time.sleep(0.5)
+
 # from rtde_control import RTDEControlInterface
 # import math
 # rtde_control = RTDEControlInterface("192.168.12.60")
@@ -68,14 +97,3 @@
 
 # ----------------------------------------------------------------------------
 
-from rtde_receive import RTDEReceiveInterface
-
-rtde_receive = RTDEReceiveInterface("192.168.12.60")
-
-# Get current joint positions (in radians)
-joint_positions = rtde_receive.getActualQ()
-print("Joint positions:", joint_positions)
-
-# Get current end-effector pose (x, y, z, Rx, Ry, Rz)
-ee_pose = rtde_receive.getActualTCPPose()
-print("End-effector pose:", ee_pose)

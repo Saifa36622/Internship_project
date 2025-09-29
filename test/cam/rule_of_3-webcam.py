@@ -30,8 +30,8 @@ try:
         depth_image = np.asanyarray(depth_frame.get_data())
 
         # Fix upside-down frames
-        color_image = cv2.rotate(color_image, cv2.ROTATE_180)
-        depth_image = cv2.rotate(depth_image, cv2.ROTATE_180)
+        # color_image = cv2.rotate(color_image, cv2.ROTATE_180)
+        # depth_image = cv2.rotate(depth_image, cv2.ROTATE_180)
 
         # Overlay grid
         draw_rule_of_thirds(color_image)

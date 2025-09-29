@@ -3,18 +3,33 @@ import math
 rtde_control = RTDEControlInterface("192.168.12.60")
 
 # start position
-joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
+joint_q = [2.4386210441589355, -1.234729604130127, -0.7267842292785645, 1.1271859842487792, -1.7405036131488245, 3.9444682598114014]
 rtde_control.moveJ(joint_q)
 
+# joint_q = [2.4391732215881348, -3.092053075829977, -0.5345644950866699, 3.463233633632324, -1.4118107000934046, 3.9444563388824463]
+# rtde_control.moveJ(joint_q)
 
-joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
-rtde_control.moveJ(joint_q)
+# joint_q = [2.4386210441589355, -1.234729604130127, -0.7267842292785645, 1.1271859842487792, -1.7405036131488245, 3.9444682598114014]
+# rtde_control.moveJ(joint_q)
 
-joint_q = [math.radians(90), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
-rtde_control.moveJ(joint_q)
+# joint_q = [2.233736515045166, -3.070524831811422, -0.8195862770080566, 3.8928724962421875, -1.4917848745929163, 4.06032657623291]
+# rtde_control.moveJ(joint_q)
 
-joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
-rtde_control.moveJ(joint_q)
+
+# GRIP BALL = [2.4493489265441895, -2.953338762322897, -0.8242430686950684, 3.8622066217609863, -1.4928253332721155, 3.9300923347473145]
+
+
+# joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-90), math.radians(90), math.radians(45)]
+# rtde_control.moveJ(joint_q)
+
+# joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
+# rtde_control.moveJ(joint_q)
+
+# joint_q = [math.radians(90), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
+# rtde_control.moveJ(joint_q)
+
+# joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
+# rtde_control.moveJ(joint_q)
 
 
 rtde_control.stopScript()

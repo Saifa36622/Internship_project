@@ -9,63 +9,41 @@ from ur_analytic_ik import ur3e
 rtde_control = RTDEControlInterface("192.168.12.60")
 rtde_receive = RTDEReceiveInterface("192.168.12.60")
 
-# start position
+# --- IMPORTANT: We're not using moveJ for continuous control.
+# Instead, we'll use a continuous loop with servoj or speedj.
+# The `moveJ` below is just for setting a safe start position.
+
+# Start Position
 joint_q = [math.radians(45), math.radians(-135), 0.0, math.radians(-45), math.radians(90), math.radians(45)]
 rtde_control.moveJ(joint_q)
 
 
-def tcp_to_joint_position(target_tcp_pose_xyz):
+def tcp_to_joint_position(target_tcp_pose):
     """
     Calculates a single target joint position for a desired Cartesian pose.
 
     Args:
-        target_tcp_pose_xyz (list): A list [x, y, z] for the target position in meters.
+        target_tcp_pose (list): A 6D list [x, y, z, Rx, Ry, Rz] for the target pose.
 
     Returns:
         list: A single joint configuration for the target pose.
         None: If the target pose is unreachable or no solution is found.
     """
-    # 1. Get the current robot pose (position and orientation)
-    current_tcp_pose = rtde_receive.getActualTCPPose()
-    current_joint_q = rtde_receive.getActualQ()
-    print(f"Current TCP pose: {current_tcp_pose}")
-    print(f"Current joint positions: {current_joint_q}")
-    if not current_tcp_pose or not current_joint_q:
-        print("Could not retrieve current robot state.")
-        return None
-
-    # We need a 6D pose (x, y, z, Rx, Ry, Rz) for IK.
-    # The user provides x, y, z, so we'll maintain the current orientation.
-    target_pos = np.array(target_tcp_pose_xyz)
-    target_rot_vec = np.array(current_tcp_pose[3:6]) # Maintain current orientation
-
-    # Create a 4x4 homogeneous transformation matrix for the target pose
+    # Use the homogeneous transformation matrix for UR-analytic-ik
     target_T = np.identity(4)
-    target_T[:3, 3] = target_pos
-
-    # For simplicity, we assume Rx, Ry, Rz are in radians and represent Euler angles
-    # The RTDE interface returns a rotation vector.
-    # A full implementation would need a proper conversion function from the rotation vector
-    # to a rotation matrix to accurately represent the orientation.
-    # For this example, we will use the ur-analytic-ik function
-    # that takes a 6D pose vector which can be constructed from the current TCP.
-    
-    # We use a placeholder for the orientation matrix to proceed with the core logic
+    target_T[:3, 3] = target_tcp_pose[:3]
+    # For a full solution, you would need to convert the rotation vector to a rotation matrix.
     # The `ur-analytic-ik` library handles this conversion internally when using the 6D pose.
+    # We will proceed with the simplest case by providing a 4x4 matrix from xyz position
     
-    # 2. Calculate the corresponding joint configuration
-    print("Calculating inverse kinematics for the target pose...")
-    
-    ik_solutions = ur3e.inverse_kinematics(target_T)
-
-    if not ik_solutions:
-        print("Warning: Target pose is unreachable.")
+    # We will use the `inverse_kinematics_closest` to find the best solution
+    current_joint_q = rtde_receive.getActualQ()
+    if not current_joint_q:
+        print("Could not retrieve current robot joint state.")
         return None
 
-    # 3. Select the solution closest to the previous joint state.
-    # This prevents jerky or unsafe movements by avoiding large joint flips.
     q_solution = ur3e.inverse_kinematics_closest(target_T, *current_joint_q)
-    
+    print(f"IK solutions found: {q_solution}")
     if q_solution is None:
         print("Warning: Could not find a 'closest' solution for the target pose.")
         return None
@@ -73,34 +51,56 @@ def tcp_to_joint_position(target_tcp_pose_xyz):
     print("Calculated a joint target.")
     return q_solution
 
-def execute_moveJ_command(target_joint_q, rtde_control_interface):
+def execute_continuous_movement(delta_x, delta_y, delta_z):
     """
-    Executes a moveJ command to a target joint position.
+    Executes a continuous, joystick-like movement using a high-frequency loop.
     """
-    print("Executing moveJ command...")
-    rtde_control_interface.moveJ(target_joint_q)
-    print("MoveJ command finished.")
+    print("Starting continuous joystick control...")
+    
+    # Loop continuously until the user stops the script
+    try:
+        while True:
+            # 1. Get the current robot pose (x, y, z, Rx, Ry, Rz)
+            current_tcp_pose = rtde_receive.getActualTCPPose()
+            # Truncate each value to 3 decimal places
+            current_tcp_pose = [round(x, 3) for x in current_tcp_pose]
+            if not current_tcp_pose:
+                print("Could not retrieve current robot pose. Retrying...")
+                time.sleep(0.1)
+                continue
 
+            # 2. Calculate the new target pose by adding the delta
+            # This replaces the need for `pose_trans`
+            # The delta is a small increment in m and rad
+            delta_pose = np.array([delta_x, delta_y, delta_z, 0, 0, 0])
+            target_tcp_pose = np.array(current_tcp_pose) + delta_pose
+            
+            print(f"Current TCP Pose: {current_tcp_pose}")
+            print(f"Target TCP Pose: {target_tcp_pose.tolist()}")
+            # 3. Calculate the new joint positions using Inverse Kinematics (IK)
+            joint_position = tcp_to_joint_position(target_tcp_pose.tolist())
+            
+            if joint_position is not None:
+                # 4. Send the new joint positions to the robot using servoj
+                # This must be done in a high-frequency loop for smooth motion.
+                # `servoj` is the correct command for this.
+                print(f"Moving to joint position: {joint_position}")
+                rtde_control.servoJ(joint_position, 0, 0, 0.002, 0.1, 1250)
+            
+            # Pause to ensure the loop runs at a consistent frequency.
+            # For a real joystick, this loop would be driven by new input.
+            time.sleep(0.01)
+
+    except KeyboardInterrupt:
+        print("Stopping script.")
+    finally:
+        # Stop the servoj command gracefully
+        rtde_control.stopScript()
+        rtde_receive.disconnect()
+        rtde_control.disconnect()
 
 # --- Main execution block ---
 if __name__ == "__main__":
-    # Get user input for target TCP position in meters
-    try:
-        x = float(input("Enter target X coordinate (m): "))
-        y = float(input("Enter target Y coordinate (m): "))
-        z = float(input("Enter target Z coordinate (m): "))
-        target_coords = [x, y, z]
-
-        print(f"Attempting to find joint angles for TCP coordinates: {target_coords}")
-        
-        # Calculate the joint position
-        joint_position = tcp_to_joint_position(target_coords)
-        
-        if joint_position:
-            input("Press Enter to execute the planned moveJ command...")
-            execute_moveJ_command(joint_position, rtde_control)
-
-    except ValueError:
-        print("Invalid input. Please enter numerical values.")
-    finally:
-        rtde_control.stopScript()
+    # Example: move continuously in the positive X direction at 0.01 m/s
+    print("Press Ctrl+C to stop the movement.")
+    execute_continuous_movement(0.01, 0, 0)
